@@ -118,11 +118,12 @@ public class ReportsFetchService {
             JSONArray jsonReports = new JSONArray(json);
             for(int i = 0; i < jsonReports.length(); i++){
                 JSONObject report = (JSONObject) jsonReports.get(i);
+                int id = report.getInt("id");
                 String title = report.getString("title");
                 String description = report.getString("description");
                 String location = report.getString("location");
                 String timeString = report.getString("createdAt");
-                reports.add(new Report(title, description, location, timeString));
+                reports.add(new Report(id, title, description, location, timeString));
             }
             return reports;
         }
