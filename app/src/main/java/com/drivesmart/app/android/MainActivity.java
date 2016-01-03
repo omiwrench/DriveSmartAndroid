@@ -14,6 +14,8 @@ import com.dexafree.materialList.view.MaterialListView;
 import com.drivesmart.app.android.model.Report;
 import com.drivesmart.app.android.service.ReportsFetchService;
 
+import net.danlew.android.joda.JodaTimeAndroid;
+
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 
@@ -22,8 +24,6 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final String TEST_DATE = "2015/04/23 18:57:22";
-
     MaterialListView reportsList;
     ReportsFetchService reportsFetcher;
 
@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        JodaTimeAndroid.init(this);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -43,19 +44,19 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
-                DateTime testDate = DateTimeFormat.forPattern(Report.CREATED_AT_FORMAT).parseDateTime(TEST_DATE);
-                reportsFetcher.getAllReportsSince(testDate, new ReportsFetchService.OnFetchFinished() {
-                    @Override
-                    public void onSuccess(List<Report> reports) {
-                        Log.d(TAG, "Fetched " + reports.size() + " reports");
-                    }
+            }
+        });
 
-                    @Override
-                    public void onError(String error) {
-                        Log.e(TAG, "Reports failed to fetch. ");
-                        Log.e(TAG, error);
-                    }
-                });
+        reportsFetcher.startAutoUpdating(new ReportsFetchService.OnFetchFinished() {
+            @Override
+            public void onSuccess(List<Report> reports) {
+                Log.d(TAG, "Fetched " + reports.size() + " reports");
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Reports failed to fetch. ");
+                Log.e(TAG, error);
             }
         });
 
