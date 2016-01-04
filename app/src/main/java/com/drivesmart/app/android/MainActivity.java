@@ -1,6 +1,5 @@
 package com.drivesmart.app.android;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -10,32 +9,31 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ImageView;
 
 import com.dexafree.materialList.card.Card;
-import com.dexafree.materialList.card.CardProvider;
+import com.dexafree.materialList.listeners.OnDismissCallback;
+import com.dexafree.materialList.view.MaterialListAdapter;
 import com.dexafree.materialList.view.MaterialListView;
+import com.drivesmart.app.android.dao.DriveSmartDbHelper;
+import com.drivesmart.app.android.dao.OnQueryFinished;
 import com.drivesmart.app.android.model.Report;
 import com.drivesmart.app.android.service.ReportsFetchService;
-import com.drivesmart.app.android.view.layoutmanager.WrappingLinearLayoutManager;
 import com.drivesmart.app.android.view.provider.ReportCardProvider;
 
 import net.danlew.android.joda.JodaTimeAndroid;
 
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-
 import java.util.ArrayList;
 import java.util.List;
 
-import jp.wasabeef.recyclerview.animators.SlideInLeftAnimator;
+import jp.wasabeef.recyclerview.animators.OvershootInRightAnimator;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getName();
 
-    MaterialListView reportsList;
+    List<Report> reportsList = new ArrayList<>();
+    MaterialListView reportsListView;
     ReportsFetchService reportsFetcher;
-
+    DriveSmartDbHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         reportsFetcher = new ReportsFetchService(this);
+        dbHelper = new DriveSmartDbHelper(this);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -61,7 +60,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onSuccess(List<Report> reports) {
                 Log.d(TAG, "Fetched " + reports.size() + " reports");
-                createReportCards(reports);
+                if(reports.size() > 0) {
+                    handleNewReports(reports);
+                }
             }
 
             @Override
@@ -71,30 +72,43 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        reportsList = (MaterialListView) findViewById(R.id.reports_listview);
-        reportsList.setItemAnimator(new SlideInLeftAnimator());
-        reportsList.getItemAnimator().setAddDuration(300);
-        reportsList.getItemAnimator().setRemoveDuration(300);
-        //reportsList.setNestedScrollingEnabled(false);
-        reportsList.setHasFixedSize(false);
-        //reportsList.setLayoutManager(new WrappingLinearLayoutManager(this));
+        reportsListView = (MaterialListView) findViewById(R.id.reports_listview);
+        reportsListView.setItemAnimator(new OvershootInRightAnimator());
+        reportsListView.getItemAnimator().setAddDuration(300);
+        reportsListView.getItemAnimator().setRemoveDuration(300);
+        reportsListView.setHasFixedSize(false);
+
+        reportsListView.setOnDismissCallback(new OnDismissCallback() {
+            @Override
+            public void onDismiss(Card card, int position) {
+                Report report = (Report) card.getTag();
+                dbHelper.deleteReportById(report.getId(), new OnQueryFinished<Void>() {
+                    @Override
+                    public void onSuccess(List<Void> results) {
+                       Log.d(TAG, "Success!");
+                    }
+                    @Override
+                    public void onError(Exception e) {}
+                });
+            }
+        });
+        updateReportsList();
     }
 
     private void createReportCards(List<Report> reports){
-        List<Card> cards = new ArrayList<>();
+        MaterialListAdapter adapter = reportsListView.getAdapter();
         for(Report report : reports){
             Card card = new Card.Builder(this)
-                                .setTag("REPORT_" + report.getId())
+                                .setTag(report)
                                 .withProvider(new ReportCardProvider())
                                 .setTitle(report.getTitle())
                                 .setDescription(report.getDescription())
                                 .setLocation(report.getLocation())
                                 .endConfig()
+                                .setDismissible()
                                 .build();
-            cards.add(card);
+            adapter.addAtStart(card);
         }
-        reportsList.getAdapter().addAll(cards);
-        reportsList.getAdapter().notifyDataSetChanged();
     }
     private void mockCards(){
         Card card = new Card.Builder(this)
@@ -104,10 +118,34 @@ public class MainActivity extends AppCompatActivity {
                             .setDescription("Stillastående köer över hela jävla skiten")
                             .setLocation("E4an")
                             .endConfig()
+                            .setDismissible()
                             .build();
-        reportsList.getAdapter().add(card);
-        reportsList.getAdapter().notifyDataSetChanged();
-        Log.d(TAG, "items: " + reportsList.getAdapter().getItemCount());
+        reportsListView.getAdapter().addAtStart(card);
+    }
+
+    private void handleNewReports(List<Report> reports){
+        dbHelper.insertReports(reports, new OnQueryFinished<Void>() {
+            @Override
+            public void onSuccess(List<Void> results) {
+                updateReportsList();
+            }
+
+            @Override
+            public void onError(Exception e) {
+            }
+        });
+    }
+    private void updateReportsList(){
+        dbHelper.getAllReports(new OnQueryFinished<Report>() {
+            @Override
+            public void onSuccess(List<Report> results) {
+                results.removeAll(reportsList);
+                createReportCards(results);
+                reportsList.addAll(results);
+            }
+            @Override
+            public void onError(Exception e) {}
+        });
     }
 
     @Override

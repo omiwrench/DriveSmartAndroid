@@ -22,7 +22,7 @@ public class Report {
 
     public Report(int id, String title, String description, String location, String createdAtString){
         try{
-            DateTime createdAt = DateTimeFormat.forPattern(DatePatternHelper.JSON_DATE_TIME_FORMAT).parseDateTime(createdAtString);
+            DateTime createdAt = DatePatternHelper.parseForJSONFormat(createdAtString);
             init(id, title, description, location, createdAt);
         }
         catch(IllegalArgumentException e) {
@@ -35,6 +35,7 @@ public class Report {
         init(id, title, description, location, createdAt);
     }
     private void init(int id, String title, String description, String location, DateTime createdAt){
+        this.id = id;
         this.title = title;
         this.description = description;
         this.location = location;
@@ -55,5 +56,23 @@ public class Report {
     }
     public DateTime getCreatedAt() {
         return createdAt;
+    }
+    public String getCreatedAtAsString(){
+        return DatePatternHelper.printForJSONFormat(createdAt);
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(!(o instanceof Report)){
+            return false;
+        }
+        Report r = (Report) o;
+        return r.id == this.id;
+    }
+    @Override
+    public int hashCode(){
+        int result = 17;
+        result = 31 * result + id;
+        return result;
     }
 }
