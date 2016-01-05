@@ -19,6 +19,7 @@ import static com.drivesmart.app.android.dao.DriveSmartContract.*;
  * Created by omiwrench on 2016-01-04.
  */
 class ReportsDbHelper extends SQLiteOpenHelper{
+    private static final int DELETE_ALL_REPORTS_FLAG = -1;
 
     public ReportsDbHelper(Context context, int databaseVersion, String databaseName){
         super(context, databaseName, null, databaseVersion);
@@ -54,6 +55,11 @@ class ReportsDbHelper extends SQLiteOpenHelper{
     }
     public void deleteReportsById(List<Integer> ids, OnQueryFinished<Void> onQueryFinished){
         DeleteReportsTask deleteTask = new DeleteReportsTask(onQueryFinished);
+        deleteTask.execute(ids);
+    }
+    public void deleteAllReports(OnQueryFinished<Void> onFinished){
+        DeleteReportsTask deleteTask = new DeleteReportsTask(onFinished);
+        List<Integer> ids = Arrays.asList(DELETE_ALL_REPORTS_FLAG);
         deleteTask.execute(ids);
     }
 
@@ -96,6 +102,12 @@ class ReportsDbHelper extends SQLiteOpenHelper{
         return reports;
     }
     private void dbDeleteReportsById(List<Integer> ids){
+        for(int i : ids){
+            if(i == DELETE_ALL_REPORTS_FLAG){
+                dbDeleteAllReports();
+                return;
+            }
+        }
         SQLiteDatabase database = getWritableDatabase();
         String selection = ReportsEntry.COLUMN_NAME_REPORT_ID + " IN(" + new String(new char[ids.size()-1]).replace("\0", "?,") + "?)";
         String[] selectionArgs = new String[ids.size()];
@@ -103,6 +115,10 @@ class ReportsDbHelper extends SQLiteOpenHelper{
             selectionArgs[i] = String.valueOf(ids.get(i));
         }
         database.delete(ReportsEntry.TABLE_NAME, selection, selectionArgs);
+    }
+    private void dbDeleteAllReports(){
+        SQLiteDatabase database = getWritableDatabase();
+        database.execSQL("DELETE FROM " + ReportsEntry.TABLE_NAME);
     }
 
     private List<Report> extractReportsFromCursor(Cursor cursor){

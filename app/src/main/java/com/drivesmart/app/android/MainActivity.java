@@ -1,5 +1,7 @@
 package com.drivesmart.app.android;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.media.Image;
@@ -13,6 +15,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
+import android.view.ViewPropertyAnimator;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -32,6 +35,8 @@ import com.drivesmart.app.android.view.provider.ReportCardProvider;
 
 import net.danlew.android.joda.JodaTimeAndroid;
 
+import org.joda.time.DateTime;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,7 +45,7 @@ import jp.wasabeef.recyclerview.animators.OvershootInRightAnimator;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final long FAB_ANIMATION_DURATION = 400L;
+    private static final long FAB_ANIMATION_DURATION = 300L;
     private static final float FAB_SCALE_FACTOR = 20.0f;
     private static final int MINIMUM_X_DISTANCE = 200;
 
@@ -50,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton animationFab;
     private boolean revealFlag;
     private float fabSize;
+
+    private ViewGroup addContentContainer;
 
     private List<Report> reportsList = new ArrayList<>();
     private MaterialListView reportsListView;
@@ -79,22 +86,9 @@ public class MainActivity extends AppCompatActivity {
         });
         fabContainer = (FrameLayout) findViewById(R.id.fab_container);
         animationFab = (ImageButton) findViewById(R.id.animation_fab);
+        addContentContainer = (ViewGroup) findViewById(R.id.content_add);
 
-        reportsFetcher.startAutoUpdating(new ReportsFetchService.OnFetchFinished() {
-            @Override
-            public void onSuccess(List<Report> reports) {
-                Log.d(TAG, "Fetched " + reports.size() + " reports");
-                if(reports.size() > 0) {
-                    handleNewReports(reports);
-                }
-            }
-
-            @Override
-            public void onError(String error) {
-                Log.e(TAG, "Reports failed to fetch. ");
-                Log.e(TAG, error);
-            }
-        });
+        startAutoUpdatingReports();
 
         reportsListView = (MaterialListView) findViewById(R.id.reports_listview);
         reportsListView.setItemAnimator(new OvershootInRightAnimator());
@@ -106,16 +100,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDismiss(Card card, int position) {
                 Report report = (Report) card.getTag();
-                dbHelper.deleteReportById(report.getId(), new OnQueryFinished<Void>() {
-                    @Override
-                    public void onSuccess(List<Void> results) {
-                        Log.d(TAG, "Success!");
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                    }
-                });
+                dbHelper.deleteReportById(report.getId());
             }
         });
         updateReportsList();
@@ -139,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
         anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                if(Math.abs(startX - animationFab.getX()) > MINIMUM_X_DISTANCE && !revealFlag){
+                if (Math.abs(startX - animationFab.getX()) > MINIMUM_X_DISTANCE && !revealFlag) {
                     //fabContainer.setY(fabContainer.getY() + (fabSize/2));
                     fabContainer.setClipChildren(true);
                     rootView.setClipChildren(true);
@@ -147,7 +132,14 @@ public class MainActivity extends AppCompatActivity {
                     animationFab.animate()
                             .scaleXBy(FAB_SCALE_FACTOR)
                             .scaleYBy(FAB_SCALE_FACTOR)
-                            .setDuration(FAB_ANIMATION_DURATION);
+                            .setDuration(FAB_ANIMATION_DURATION)
+                            .setListener(new AnimatorListenerAdapter() {
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    super.onAnimationEnd(animation);
+                                    onFabAnimationEnded();
+                                }
+                            });
                     revealFlag = true;
                 }
             }
@@ -160,6 +152,27 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
             animationFab.setTranslationY(newLoc.mY);
+        }
+    }
+    private void onFabAnimationEnded(){
+        animationFab.setVisibility(View.INVISIBLE);
+        addContentContainer.setVisibility(View.VISIBLE);
+
+        View[] subViews = {
+                findViewById(R.id.input_title),
+                findViewById(R.id.input_location),
+                findViewById(R.id.input_description),
+                findViewById(R.id.button_add_report),
+                findViewById(R.id.button_cancel_report)
+        };
+        for(int i = 0; i < subViews.length; i++){
+            View v = subViews[i];
+            v.animate()
+                    .scaleX(1)
+                    .scaleY(1)
+                    .setDuration(200)
+                    .setStartDelay(i*50)
+                    .start();
         }
     }
 
@@ -178,19 +191,27 @@ public class MainActivity extends AppCompatActivity {
             adapter.addAtStart(card);
         }
     }
-    private void mockCards(){
-        Card card = new Card.Builder(this)
-                            .setTag("MOCK")
-                            .withProvider(new ReportCardProvider())
-                            .setTitle("Krock på motorvägen")
-                            .setDescription("Stillastående köer över hela jävla skiten")
-                            .setLocation("E4an")
-                            .endConfig()
-                            .setDismissible()
-                            .build();
-        reportsListView.getAdapter().addAtStart(card);
-    }
 
+    private void startAutoUpdatingReports(){
+        reportsFetcher.startAutoUpdating(new ReportsFetchService.OnFetchFinished() {
+            @Override
+            public void onSuccess(List<Report> reports) {
+                Log.d(TAG, "Fetched " + reports.size() + " reports");
+                if(reports.size() > 0) {
+                    handleNewReports(reports);
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Reports failed to fetch. ");
+                Log.e(TAG, error);
+            }
+        });
+    }
+    private void stopAutoUpdatingReports(){
+        reportsFetcher.cancelAutoUpdating();
+    }
     private void handleNewReports(List<Report> reports){
         dbHelper.insertReports(reports, new OnQueryFinished<Void>() {
             @Override
@@ -211,6 +232,29 @@ public class MainActivity extends AppCompatActivity {
                 createReportCards(results);
                 reportsList.addAll(results);
             }
+
+            @Override
+            public void onError(Exception e) {
+            }
+        });
+    }
+
+    private void reFetchReports(){
+        stopAutoUpdatingReports();
+        dbHelper.deleteAllReports(new OnQueryFinished<Void>() {
+            @Override
+            public void onSuccess(List<Void> results) {
+                reportsFetcher.getAllReportsSince(new DateTime().minusWeeks(1), new ReportsFetchService.OnFetchFinished() {
+                    @Override
+                    public void onSuccess(List<Report> reports) {
+                        reportsList.clear();
+                        handleNewReports(reports);
+                        startAutoUpdatingReports();
+                    }
+                    @Override
+                    public void onError(String error) {}
+                });
+            }
             @Override
             public void onError(Exception e) {}
         });
@@ -225,8 +269,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
+        if (id == R.id.action_refresh) {
+            reFetchReports();
         }
         return super.onOptionsItemSelected(item);
     }

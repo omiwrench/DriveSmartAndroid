@@ -58,4 +58,7 @@ public class DriveSmartDbHelper extends SQLiteOpenHelper{
     public void deleteReportsById(List<Integer> ids, OnQueryFinished<Void> onFinished){
         reportsDbHelper.deleteReportsById(ids, onFinished);
     }
+    public void deleteAllReports(OnQueryFinished<Void> onFinished){
+        reportsDbHelper.deleteAllReports(onFinished);
+    }
 }
