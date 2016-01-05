@@ -1,5 +1,7 @@
 package com.drivesmart.app.android;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -9,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.animation.AccelerateInterpolator;
 
 import com.dexafree.materialList.card.Card;
 import com.dexafree.materialList.listeners.OnDismissCallback;
@@ -18,6 +21,9 @@ import com.drivesmart.app.android.dao.DriveSmartDbHelper;
 import com.drivesmart.app.android.dao.OnQueryFinished;
 import com.drivesmart.app.android.model.Report;
 import com.drivesmart.app.android.service.ReportsFetchService;
+import com.drivesmart.app.android.view.animation.AnimatorPath;
+import com.drivesmart.app.android.view.animation.PathEvaluator;
+import com.drivesmart.app.android.view.animation.PathPoint;
 import com.drivesmart.app.android.view.provider.ReportCardProvider;
 
 import net.danlew.android.joda.JodaTimeAndroid;
@@ -30,10 +36,20 @@ import jp.wasabeef.recyclerview.animators.OvershootInRightAnimator;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getName();
 
-    List<Report> reportsList = new ArrayList<>();
-    MaterialListView reportsListView;
-    ReportsFetchService reportsFetcher;
-    DriveSmartDbHelper dbHelper;
+    private static final long FAB_ANIMATION_DURATION = 1500L;
+    private static final float FAB_SCALE_FACTOR = 20.0f;
+    private static final int MINIMUM_X_DISTANCE = 200;
+
+    private View fabContainer;
+    private FloatingActionButton fab;
+    private boolean revealFlag;
+    private float fabSize;
+
+    private List<Report> reportsList = new ArrayList<>();
+    private MaterialListView reportsListView;
+
+    private ReportsFetchService reportsFetcher;
+    private DriveSmartDbHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,15 +62,14 @@ public class MainActivity extends AppCompatActivity {
         reportsFetcher = new ReportsFetchService(this);
         dbHelper = new DriveSmartDbHelper(this);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-                mockCards();
+                onFabPressed(view);
             }
         });
+        fabContainer = findViewById(R.id.fab_container);
 
         reportsFetcher.startAutoUpdating(new ReportsFetchService.OnFetchFinished() {
             @Override
@@ -93,6 +108,43 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         updateReportsList();
+    }
+    private void onFabPressed(View view){
+        final float startX = fab.getX();
+
+        AnimatorPath path = new AnimatorPath();
+        path.moveTo(0, 0);
+        path.curveTo(-200, 1000, -400, 100, -600, 1000);
+
+        final ObjectAnimator anim = ObjectAnimator.ofObject(this, "fabLoc", new PathEvaluator(), path.getPoints().toArray());
+
+        anim.setInterpolator(new AccelerateInterpolator());
+        anim.setDuration(FAB_ANIMATION_DURATION);
+        anim.start();
+
+        anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                if(Math.abs(startX - fab.getX()) > MINIMUM_X_DISTANCE && !revealFlag){
+                    fabContainer.setY(fabContainer.getY() + (fabSize/2));
+
+                    fab.animate()
+                            .scaleXBy(FAB_SCALE_FACTOR)
+                            .scaleYBy(FAB_SCALE_FACTOR)
+                            .setDuration(FAB_ANIMATION_DURATION);
+                    revealFlag = true;
+                }
+            }
+        });
+    }
+    public void setFabLoc(PathPoint newLoc){
+        fab.setTranslationX(newLoc.mX);
+        if(revealFlag){
+            //fab.setTranslationY(newLoc.mY - (fabSize / 2));
+        }
+        else{
+            fab.setTranslationY(newLoc.mY);
+        }
     }
 
     private void createReportCards(List<Report> reports){
