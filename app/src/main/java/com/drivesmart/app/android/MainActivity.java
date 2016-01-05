@@ -2,6 +2,7 @@ package com.drivesmart.app.android;
 
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.media.Image;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -11,7 +12,10 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 
 import com.dexafree.materialList.card.Card;
 import com.dexafree.materialList.listeners.OnDismissCallback;
@@ -36,12 +40,14 @@ import jp.wasabeef.recyclerview.animators.OvershootInRightAnimator;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final long FAB_ANIMATION_DURATION = 1500L;
+    private static final long FAB_ANIMATION_DURATION = 400L;
     private static final float FAB_SCALE_FACTOR = 20.0f;
     private static final int MINIMUM_X_DISTANCE = 200;
 
-    private View fabContainer;
+    private ViewGroup rootView;
+    private FrameLayout fabContainer;
     private FloatingActionButton fab;
+    private ImageButton animationFab;
     private boolean revealFlag;
     private float fabSize;
 
@@ -62,6 +68,8 @@ public class MainActivity extends AppCompatActivity {
         reportsFetcher = new ReportsFetchService(this);
         dbHelper = new DriveSmartDbHelper(this);
 
+        rootView = (ViewGroup) findViewById(R.id.root_view);
+
         fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -69,7 +77,8 @@ public class MainActivity extends AppCompatActivity {
                 onFabPressed(view);
             }
         });
-        fabContainer = findViewById(R.id.fab_container);
+        fabContainer = (FrameLayout) findViewById(R.id.fab_container);
+        animationFab = (ImageButton) findViewById(R.id.animation_fab);
 
         reportsFetcher.startAutoUpdating(new ReportsFetchService.OnFetchFinished() {
             @Override
@@ -100,10 +109,12 @@ public class MainActivity extends AppCompatActivity {
                 dbHelper.deleteReportById(report.getId(), new OnQueryFinished<Void>() {
                     @Override
                     public void onSuccess(List<Void> results) {
-                       Log.d(TAG, "Success!");
+                        Log.d(TAG, "Success!");
                     }
+
                     @Override
-                    public void onError(Exception e) {}
+                    public void onError(Exception e) {
+                    }
                 });
             }
         });
@@ -111,6 +122,9 @@ public class MainActivity extends AppCompatActivity {
     }
     private void onFabPressed(View view){
         final float startX = fab.getX();
+
+        fab.setVisibility(View.INVISIBLE);
+        animationFab.setVisibility(View.VISIBLE);
 
         AnimatorPath path = new AnimatorPath();
         path.moveTo(0, 0);
@@ -125,10 +139,12 @@ public class MainActivity extends AppCompatActivity {
         anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                if(Math.abs(startX - fab.getX()) > MINIMUM_X_DISTANCE && !revealFlag){
-                    fabContainer.setY(fabContainer.getY() + (fabSize/2));
+                if(Math.abs(startX - animationFab.getX()) > MINIMUM_X_DISTANCE && !revealFlag){
+                    //fabContainer.setY(fabContainer.getY() + (fabSize/2));
+                    fabContainer.setClipChildren(true);
+                    rootView.setClipChildren(true);
 
-                    fab.animate()
+                    animationFab.animate()
                             .scaleXBy(FAB_SCALE_FACTOR)
                             .scaleYBy(FAB_SCALE_FACTOR)
                             .setDuration(FAB_ANIMATION_DURATION);
@@ -138,12 +154,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     public void setFabLoc(PathPoint newLoc){
-        fab.setTranslationX(newLoc.mX);
+        animationFab.setTranslationX(newLoc.mX);
         if(revealFlag){
             //fab.setTranslationY(newLoc.mY - (fabSize / 2));
         }
         else{
-            fab.setTranslationY(newLoc.mY);
+            animationFab.setTranslationY(newLoc.mY);
         }
     }
 

@@ -3,9 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/fab_container"
+    android:id="@+id/root_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
     android:fitsSystemWindows="true"
     tools:context="com.drivesmart.app.android.MainActivity">
 
@@ -34,7 +35,27 @@
         </android.support.design.widget.CollapsingToolbarLayout>
     </android.support.design.widget.AppBarLayout>
 
-    <include layout="@layout/content_main"/>
+    <FrameLayout
+        android:id="@+id/fab_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:layout_below="@id/app_bar">
+        <include layout="@layout/content_main"/>
+        <include layout="@layout/content_add"/>
+        <ImageButton
+            android:id="@+id/animation_fab"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="top|right"
+            android:layout_marginRight="@dimen/activity_horizontal_margin"
+            android:layout_marginTop="-28dp"
+            android:background="@drawable/ripple"
+            android:elevation="5dp"
+            android:visibility="invisible"/>
+    </FrameLayout>
+
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"
