@@ -6,6 +6,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.media.Image;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -17,6 +18,7 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.animation.AccelerateInterpolator;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 
@@ -57,12 +59,16 @@ public class MainActivity extends AppCompatActivity {
     private float fabSize;
 
     private ViewGroup addContentContainer;
+    private Button addReportButton;
+    private Button cancelReportButton;
 
     private List<Report> reportsList = new ArrayList<>();
     private MaterialListView reportsListView;
 
     private ReportsFetchService reportsFetcher;
     private DriveSmartDbHelper dbHelper;
+
+    private float[] fabStartingPosition = new float[2];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,22 +81,9 @@ public class MainActivity extends AppCompatActivity {
         reportsFetcher = new ReportsFetchService(this);
         dbHelper = new DriveSmartDbHelper(this);
 
-        rootView = (ViewGroup) findViewById(R.id.root_view);
+        bindViews();
+        bindClickListeners();
 
-        fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onFabPressed(view);
-            }
-        });
-        fabContainer = (FrameLayout) findViewById(R.id.fab_container);
-        animationFab = (ImageButton) findViewById(R.id.animation_fab);
-        addContentContainer = (ViewGroup) findViewById(R.id.content_add);
-
-        startAutoUpdatingReports();
-
-        reportsListView = (MaterialListView) findViewById(R.id.reports_listview);
         reportsListView.setItemAnimator(new OvershootInRightAnimator());
         reportsListView.getItemAnimator().setAddDuration(300);
         reportsListView.getItemAnimator().setRemoveDuration(300);
@@ -103,10 +96,38 @@ public class MainActivity extends AppCompatActivity {
                 dbHelper.deleteReportById(report.getId());
             }
         });
+        startAutoUpdatingReports();
         updateReportsList();
+    }
+    private void bindViews(){
+        rootView = (ViewGroup) findViewById(R.id.root_view);
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        fabContainer = (FrameLayout) findViewById(R.id.fab_container);
+        animationFab = (ImageButton) findViewById(R.id.animation_fab);
+        addContentContainer = (ViewGroup) findViewById(R.id.content_add);
+        addReportButton = (Button) findViewById(R.id.button_add_report);
+        cancelReportButton = (Button) findViewById(R.id.button_cancel_report);
+        reportsListView = (MaterialListView) findViewById(R.id.reports_listview);
+    }
+    private void bindClickListeners(){
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onFabPressed(view);
+            }
+        });
+        cancelReportButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onCancelPressed(view);
+            }
+        });
     }
     private void onFabPressed(View view){
         final float startX = fab.getX();
+        final float startY = fab.getY();
+
+        fabStartingPosition = new float[]{startX, startY};
 
         fab.setVisibility(View.INVISIBLE);
         animationFab.setVisibility(View.VISIBLE);
@@ -174,6 +195,84 @@ public class MainActivity extends AppCompatActivity {
                     .setStartDelay(i*50)
                     .start();
         }
+    }
+
+    private void onCancelPressed(View view){
+        Log.d(TAG, "Cancel pressed");
+        View[] subViews = {
+                findViewById(R.id.input_title),
+                findViewById(R.id.input_location),
+                findViewById(R.id.input_description),
+                findViewById(R.id.button_add_report),
+                findViewById(R.id.button_cancel_report)
+        };
+        for(int i = subViews.length-1; i >= 0; i--){
+            View v = subViews[i];
+            v.animate()
+                    .scaleX(0)
+                    .scaleY(0)
+                    .setDuration(200)
+                    .setStartDelay(i * 50)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            super.onAnimationEnd(animation);
+                        }
+                    })
+                    .start();
+        }
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                onCancelAnimationEnded();
+            }
+        }, 200 + (subViews.length-1)*50);
+    }
+    private void onCancelAnimationEnded(){
+        Log.d(TAG, "OnCancelAnimationEnded");
+        int dur = 400;
+        revealFlag = false;
+        animationFab.setVisibility(View.VISIBLE);
+        addContentContainer.setVisibility(View.INVISIBLE);
+
+        final float startX = fab.getX();
+
+        AnimatorPath path = new AnimatorPath();
+        path.moveTo(-animationFab.getX(), animationFab.getY());
+        path.curveTo(-200, 700, 0, 0, 0, 0);
+
+        final ObjectAnimator anim = ObjectAnimator.ofObject(this, "fabLoc", new PathEvaluator(), path.getPoints().toArray());
+
+        anim.setInterpolator(new AccelerateInterpolator());
+        anim.setDuration(dur);
+        anim.setStartDelay(dur / 2);
+        anim.start();
+
+        animationFab.animate()
+                .scaleX(1)
+                .scaleY(1)
+                .setDuration(dur)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                        //If I remove this the animation gets all fucked up. Good job devs.
+                    }
+                });
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                fabContainer.setClipChildren(false);
+                rootView.setClipChildren(false);
+            }
+        }, (long) (dur * 1.5));
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                animationFab.setVisibility(View.INVISIBLE);
+                fab.setVisibility(View.VISIBLE);
+            }
+        }, (long)(dur*2.0));
     }
 
     private void createReportCards(List<Report> reports){
