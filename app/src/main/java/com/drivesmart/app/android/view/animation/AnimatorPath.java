@@ -57,6 +57,9 @@ public class AnimatorPath {
     public void curveTo(float c0X, float c0Y, float c1X, float c1Y, float x, float y) {
         mPoints.add(PathPoint.curveTo(c0X, c0Y, c1X, c1Y, x, y));
     }
+    public void curveTo(PathPoint point){
+        mPoints.add(point);
+    }
 
     /**
      * Returns a Collection of PathPoint objects that describe all points in the path.

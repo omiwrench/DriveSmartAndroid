@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 
@@ -28,8 +29,10 @@ import com.dexafree.materialList.view.MaterialListAdapter;
 import com.dexafree.materialList.view.MaterialListView;
 import com.drivesmart.app.android.dao.DriveSmartDbHelper;
 import com.drivesmart.app.android.dao.OnQueryFinished;
+import com.drivesmart.app.android.helper.OnRequestFinished;
 import com.drivesmart.app.android.model.Report;
 import com.drivesmart.app.android.service.ReportsFetchService;
+import com.drivesmart.app.android.service.ReportsPublishService;
 import com.drivesmart.app.android.view.animation.AnimatorPath;
 import com.drivesmart.app.android.view.animation.MainActivityAnimationHandler;
 import com.drivesmart.app.android.view.animation.PathEvaluator;
@@ -50,7 +53,10 @@ public class MainActivity extends AppCompatActivity {
 
     private ViewGroup rootView;
     private FloatingActionButton fab;
-
+    private EditText titleInput;
+    private EditText locationInput;
+    private EditText descriptionInput;
+    private Button addReportButton;
     private Button cancelReportButton;
 
     private MainActivityAnimationHandler animationHandler;
@@ -59,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private MaterialListView reportsListView;
 
     private ReportsFetchService reportsFetcher;
+    private ReportsPublishService reportsPublisher;
     private DriveSmartDbHelper dbHelper;
 
     @Override
@@ -70,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         reportsFetcher = new ReportsFetchService(this);
+        reportsPublisher = new ReportsPublishService(this);
         dbHelper = new DriveSmartDbHelper(this);
 
         bindViews();
@@ -95,14 +103,24 @@ public class MainActivity extends AppCompatActivity {
     private void bindViews(){
         rootView = (ViewGroup) findViewById(R.id.root_view);
         fab = (FloatingActionButton) findViewById(R.id.fab);
+        addReportButton = (Button) findViewById(R.id.button_add_report);
         cancelReportButton = (Button) findViewById(R.id.button_cancel_report);
         reportsListView = (MaterialListView) findViewById(R.id.reports_listview);
+        titleInput = (EditText) findViewById(R.id.input_title);
+        locationInput = (EditText) findViewById(R.id.input_location);
+        descriptionInput = (EditText) findViewById(R.id.input_description);
     }
     private void bindClickListeners(){
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 onFabPressed(view);
+            }
+        });
+        addReportButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onAddPressed(v);
             }
         });
         cancelReportButton.setOnClickListener(new View.OnClickListener() {
@@ -114,6 +132,22 @@ public class MainActivity extends AppCompatActivity {
     }
     private void onFabPressed(View view){
         animationHandler.revealReportView();
+    }
+    private void onAddPressed(View view){
+        String title = titleInput.getText().toString();
+        String location = locationInput.getText().toString();
+        String description = descriptionInput.getText().toString();
+        Report report = new Report(0, title, description, location, new DateTime());
+        reportsPublisher.publishReport(report, new OnRequestFinished<Void>() {
+            @Override
+            public void onSuccess(List<Void> results) {
+                Log.d(TAG, "Success!!");
+            }
+            @Override
+            public void onError(String error) {
+                Log.e(TAG, "Error: ");
+            }
+        });
     }
     private void onCancelPressed(View view){
         animationHandler.dismissReportsView();

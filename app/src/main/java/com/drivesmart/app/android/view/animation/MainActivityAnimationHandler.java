@@ -25,9 +25,24 @@ import java.security.acl.Group;
 public class MainActivityAnimationHandler {
     private static final String TAG = MainActivityAnimationHandler.class.getName();
 
-    private static final long FAB_ANIMATION_DURATION = 300L;
-    private static final float FAB_SCALE_FACTOR = 20.0f;
-    private static final int MINIMUM_X_DISTANCE = 150;
+    private static final long FAB_REVEAL_ANIMATION_DURATION = 300L;
+    private static final long FAB_HIDE_ANIMATION_DURATION   = 300L;
+    private static final long CHILDREN_ANIMATION_DURATION   = 100L;
+    private static final long CHILDREN_ANIMATION_STEP       = 25L;
+    private static final float FAB_SCALE_FACTOR             = 20.0f;
+    private static final int MINIMUM_X_DISTANCE             = 150;
+
+    private static final PathPoint REVEAL_CURVE = PathPoint.curveTo(-200, 1000, -400, 100, -600, 1000);
+    private static final PathPoint HIDE_CURVE   = PathPoint.curveTo(-200, 700, 0, 0, 0, 0);
+
+    private enum AnimationState{
+        ANIMATING_FAB_REVEALING,
+        ANIMATING_CHILDREN_REVEALING,
+        PASSIVE_REVEALED,
+        ANIMATING_CHILDREN_HIDING,
+        ANIMATING_FAB_HIDING,
+        PASSIVE_HIDDEN
+    }
 
     private ViewGroup rootView;
     private ViewGroup fabContainer;
@@ -36,6 +51,8 @@ public class MainActivityAnimationHandler {
     private ViewGroup addContentContainer;
     private View addReportButton;
     private View cancelReportButton;
+
+    private final View[] addReportAnimatableChildren;
 
     private boolean revealFlag;
 
@@ -47,22 +64,29 @@ public class MainActivityAnimationHandler {
         addContentContainer = (ViewGroup) rootView.findViewById(R.id.content_add);
         addReportButton = (Button) rootView.findViewById(R.id.button_add_report);
         cancelReportButton = (Button) rootView.findViewById(R.id.button_cancel_report);
+
+        addReportAnimatableChildren = new View[]{
+                rootView.findViewById(R.id.input_title),
+                rootView.findViewById(R.id.input_location),
+                rootView.findViewById(R.id.input_description),
+                addReportButton,
+                cancelReportButton
+        };
     }
 
     public void revealReportView(){
         final float startX = fab.getX();
 
-        fab.setVisibility(View.INVISIBLE);
-        animationFab.setVisibility(View.VISIBLE);
+        setAnimationState(AnimationState.ANIMATING_FAB_REVEALING);
 
         AnimatorPath path = new AnimatorPath();
         path.moveTo(0, 0);
-        path.curveTo(-200, 1000, -400, 100, -600, 1000);
+        path.curveTo(REVEAL_CURVE);
 
         final ObjectAnimator anim = ObjectAnimator.ofObject(this, "fabLoc", new PathEvaluator(), path.getPoints().toArray());
 
         anim.setInterpolator(new AccelerateInterpolator());
-        anim.setDuration(FAB_ANIMATION_DURATION);
+        anim.setDuration(FAB_REVEAL_ANIMATION_DURATION);
         anim.start();
 
         anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
@@ -89,20 +113,13 @@ public class MainActivityAnimationHandler {
         });
     }
     public void dismissReportsView(){
-        View[] subViews = {
-                rootView.findViewById(R.id.input_title),
-                rootView.findViewById(R.id.input_location),
-                rootView.findViewById(R.id.input_description),
-                rootView.findViewById(R.id.button_add_report),
-                rootView.findViewById(R.id.button_cancel_report)
-        };
-        for(int i = subViews.length-1; i >= 0; i--){
-            View v = subViews[i];
+        for(int i = addReportAnimatableChildren.length-1; i >= 0; i--){
+            View v = addReportAnimatableChildren[i];
             v.animate()
                     .scaleX(0)
                     .scaleY(0)
-                    .setDuration(150)
-                    .setStartDelay(i * 30)
+                    .setDuration(CHILDREN_ANIMATION_DURATION)
+                    .setStartDelay(i * CHILDREN_ANIMATION_STEP)
                     .setListener(new AnimatorListenerAdapter() {
                         @Override
                         public void onAnimationEnd(Animator animation) {
@@ -116,32 +133,28 @@ public class MainActivityAnimationHandler {
             public void run() {
                 onCancelAnimationEnded();
             }
-        }, 200 + (subViews.length - 1) * 50);
+        }, 200 + (addReportAnimatableChildren.length - 1) * 50);
     }
     private void onCancelAnimationEnded(){
-        Log.d(TAG, "OnCancelAnimationEnded");
-        int dur = 400;
         revealFlag = false;
-        animationFab.setVisibility(View.VISIBLE);
-        addContentContainer.setVisibility(View.INVISIBLE);
 
-        final float startX = fab.getX();
+       setAnimationState(AnimationState.ANIMATING_FAB_HIDING);
 
         AnimatorPath path = new AnimatorPath();
         path.moveTo(-animationFab.getX(), animationFab.getY());
-        path.curveTo(-200, 700, 0, 0, 0, 0);
+        path.curveTo(HIDE_CURVE);
 
         final ObjectAnimator anim = ObjectAnimator.ofObject(this, "fabLoc", new PathEvaluator(), path.getPoints().toArray());
 
         anim.setInterpolator(new AccelerateInterpolator());
-        anim.setDuration(dur);
-        anim.setStartDelay(dur / 2);
+        anim.setDuration(FAB_HIDE_ANIMATION_DURATION);
+        anim.setStartDelay(CHILDREN_ANIMATION_DURATION);
         anim.start();
 
         animationFab.animate()
                 .scaleX(1)
                 .scaleY(1)
-                .setDuration(dur)
+                .setDuration(FAB_HIDE_ANIMATION_DURATION)
                 .setListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
@@ -155,14 +168,13 @@ public class MainActivityAnimationHandler {
                 fabContainer.setClipChildren(false);
                 rootView.setClipChildren(false);
             }
-        }, (long) (dur * 1.5));
+        }, (long) (FAB_HIDE_ANIMATION_DURATION * 1.5));
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                animationFab.setVisibility(View.INVISIBLE);
-                fab.setVisibility(View.VISIBLE);
+                setAnimationState(AnimationState.PASSIVE_HIDDEN);
             }
-        }, (long)(dur*2.0));
+        }, (long)(FAB_HIDE_ANIMATION_DURATION * 2.0));
     }
 
     public void setFabLoc(PathPoint newLoc){
@@ -172,24 +184,40 @@ public class MainActivityAnimationHandler {
         }
     }
     private void onFabAnimationEnded(){
-        animationFab.setVisibility(View.INVISIBLE);
-        addContentContainer.setVisibility(View.VISIBLE);
-
-        View[] subViews = {
-                rootView.findViewById(R.id.input_title),
-                rootView.findViewById(R.id.input_location),
-                rootView.findViewById(R.id.input_description),
-                rootView.findViewById(R.id.button_add_report),
-                rootView.findViewById(R.id.button_cancel_report)
-        };
-        for(int i = 0; i < subViews.length; i++){
-            View v = subViews[i];
+        setAnimationState(AnimationState.ANIMATING_CHILDREN_REVEALING);
+        for(int i = 0; i < addReportAnimatableChildren.length; i++){
+            View v = addReportAnimatableChildren[i];
             v.animate()
                     .scaleX(1)
                     .scaleY(1)
-                    .setDuration(150)
-                    .setStartDelay(i*30)
+                    .setDuration(CHILDREN_ANIMATION_DURATION)
+                    .setStartDelay(i * CHILDREN_ANIMATION_STEP)
                     .start();
+        }
+    }
+
+    private void setAnimationState(AnimationState state){
+        switch(state){
+            case ANIMATING_FAB_REVEALING:
+                fab.setVisibility(View.INVISIBLE);
+                animationFab.setVisibility(View.VISIBLE);
+                break;
+            case ANIMATING_CHILDREN_REVEALING:
+                animationFab.setVisibility(View.INVISIBLE);
+                addContentContainer.setVisibility(View.VISIBLE);
+                break;
+            case PASSIVE_REVEALED:
+                break;
+            case ANIMATING_CHILDREN_HIDING:
+                break;
+            case ANIMATING_FAB_HIDING:
+                animationFab.setVisibility(View.VISIBLE);
+                addContentContainer.setVisibility(View.INVISIBLE);
+                break;
+            case PASSIVE_HIDDEN:
+                fab.setVisibility(View.VISIBLE);
+                animationFab.setVisibility(View.INVISIBLE);
+                break;
         }
     }
 }
