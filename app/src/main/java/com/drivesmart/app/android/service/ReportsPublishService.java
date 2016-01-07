@@ -1,6 +1,7 @@
 package com.drivesmart.app.android.service;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
@@ -20,6 +21,7 @@ import java.util.Map;
  * Created by omiwrench on 2016-01-07.
  */
 public class ReportsPublishService {
+    private static final String TAG = ReportsPublishService.class.getName();
 
     private Context context;
 
@@ -35,6 +37,7 @@ public class ReportsPublishService {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
+                        Log.d(TAG, "---------------Response");
                         onFinished.onSuccess(null);
                     }
                 },
@@ -53,6 +56,7 @@ public class ReportsPublishService {
             }
         };
 
+        Log.d(TAG, "----------------Queueing");
         queue.add(request);
     }
 }

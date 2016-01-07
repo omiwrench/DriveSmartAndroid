@@ -141,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
         reportsPublisher.publishReport(report, new OnRequestFinished<Void>() {
             @Override
             public void onSuccess(List<Void> results) {
-                Log.d(TAG, "Success!!");
+                animationHandler.dismissReportsView();
             }
             @Override
             public void onError(String error) {
