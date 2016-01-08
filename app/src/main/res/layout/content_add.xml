@@ -23,7 +23,10 @@
             android:hint="Kort beskrivning"
             android:textSize="32sp"
             android:fontFamily="sans-serif-light"
-            android:layout_marginBottom="4dp"/>
+            android:layout_marginBottom="4dp"
+            android:singleLine="true"
+            android:nextFocusForward="@+id/input_location"
+            android:imeOptions="actionNext"/>
     </android.support.design.widget.TextInputLayout>
 
     <android.support.design.widget.TextInputLayout
@@ -36,7 +39,10 @@
             android:id="@+id/input_location"
             style="@style/edittext_add_report"
             android:hint="Plats"
-            android:textSize="20sp"/>
+            android:textSize="20sp"
+            android:nextFocusForward="@+id/input_description"
+            android:singleLine="true"
+            android:imeOptions="actionNext"/>
     </android.support.design.widget.TextInputLayout>
     <android.support.design.widget.TextInputLayout
         android:id="@+id/input_description_container"
@@ -47,10 +53,11 @@
         <EditText
             android:id="@+id/input_description"
             style="@style/edittext_add_report"
-            android:inputType="textMultiLine"
             android:hint="Längre beskrivning"
             android:textSize="18sp"
-            android:layout_marginBottom="4dp"/>
+            android:layout_marginBottom="4dp"
+            android:inputType="textImeMultiLine"
+            android:imeOptions="actionDone"/>
     </android.support.design.widget.TextInputLayout>
     <LinearLayout
         android:layout_width="match_parent"

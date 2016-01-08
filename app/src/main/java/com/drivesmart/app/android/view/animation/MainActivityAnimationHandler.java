@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.os.Handler;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.util.Log;
 import android.view.View;
@@ -167,6 +168,7 @@ public class MainActivityAnimationHandler {
             public void run() {
                 fabContainer.setClipChildren(false);
                 rootView.setClipChildren(false);
+                ((AppBarLayout)rootView.findViewById(R.id.app_bar)).setExpanded(true, true);
             }
         }, (long) (FAB_HIDE_ANIMATION_DURATION * 1.5));
         new Handler().postDelayed(new Runnable() {
@@ -199,7 +201,7 @@ public class MainActivityAnimationHandler {
     private void setAnimationState(AnimationState state){
         switch(state){
             case ANIMATING_FAB_REVEALING:
-                fab.setVisibility(View.INVISIBLE);
+                rootView.removeView(fab);
                 animationFab.setVisibility(View.VISIBLE);
                 break;
             case ANIMATING_CHILDREN_REVEALING:
@@ -215,7 +217,7 @@ public class MainActivityAnimationHandler {
                 addContentContainer.setVisibility(View.INVISIBLE);
                 break;
             case PASSIVE_HIDDEN:
-                fab.setVisibility(View.VISIBLE);
+                rootView.addView(fab);
                 animationFab.setVisibility(View.INVISIBLE);
                 break;
         }

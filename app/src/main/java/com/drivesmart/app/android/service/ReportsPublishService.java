@@ -37,7 +37,6 @@ public class ReportsPublishService {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        Log.d(TAG, "---------------Response");
                         onFinished.onSuccess(null);
                     }
                 },
@@ -55,8 +54,7 @@ public class ReportsPublishService {
                 return params;
             }
         };
-
-        Log.d(TAG, "----------------Queueing");
+        request.setShouldCache(false);
         queue.add(request);
     }
 }

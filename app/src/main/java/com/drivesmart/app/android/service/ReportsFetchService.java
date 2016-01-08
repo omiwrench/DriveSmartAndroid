@@ -57,10 +57,7 @@ public class ReportsFetchService {
         final Runnable updater = new Runnable() {
             @Override
             public void run() {
-                DateTime lastUpdate = getLastUpdate();
-                getAllReportsSince(lastUpdate, callback);
-                DateTime now = new DateTime();
-                setLastUpdate(now);
+                getNewReports(callback);
             }
         };
         updaterHandle = scheduler.scheduleAtFixedRate(updater, 0, UPDATE_INTERVAL, TimeUnit.SECONDS);
@@ -75,6 +72,12 @@ public class ReportsFetchService {
         }
     }
 
+    public void getNewReports(final OnFetchFinished callback){
+        DateTime lastUpdate = getLastUpdate();
+        getAllReportsSince(lastUpdate, callback);
+        DateTime now = new DateTime();
+        setLastUpdate(now);
+    }
     public void getAllReportsSince(DateTime lastUpdate, final OnFetchFinished callback){
         String fetchUrl = context.getResources().getString(R.string.url_get_reports);
         fetchUrl = appendTimestampToUrl(fetchUrl, lastUpdate);
@@ -95,6 +98,7 @@ public class ReportsFetchService {
                 Log.e(TAG, "Reports fetch unsuccessful.");
             }
         });
+        request.setShouldCache(false);
         queue.add(request);
     }
 

@@ -42,8 +42,10 @@
         android:clipChildren="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:layout_below="@id/app_bar">
+
         <include layout="@layout/content_main"/>
         <include layout="@layout/content_add"/>
+
         <ImageButton
             android:id="@+id/animation_fab"
             android:layout_width="56dp"
